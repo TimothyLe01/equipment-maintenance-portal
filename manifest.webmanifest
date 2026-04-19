@@ -1,0 +1,15 @@
+{
+  "name": "Equipment Maintenance Portal",
+  "short_name": "EqMaint",
+  "description": "Townsen Memorial Equipment Maintenance Portal",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#ffffff",
+  "theme_color": "#0083C4",
+  "icons": [
+    { "src": "favicon.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "any" },
+    { "src": "favicon.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "maskable" }
+  ]
+}

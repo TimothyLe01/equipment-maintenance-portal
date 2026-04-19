@@ -1,0 +1,1346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Equipment Maintenance Portal</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0083C4">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="EqMaint">
+<meta name="description" content="Townsen Memorial Equipment Maintenance Portal — track preventive maintenance, physicist surveys, repairs, and alerts across all facilities.">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700;800&family=Cinzel:wght@600;700&display=swap" rel="stylesheet">
+<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}))}</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<style>
+:root{
+  --bg:#ffffff;--bg2:#f4f6f8;--bg3:#e8ecef;
+  --text:#36363C;--text2:#64656B;--text3:#9a9aA0;
+  --border:rgba(54,54,60,0.10);--border2:rgba(54,54,60,0.16);--border3:rgba(54,54,60,0.22);
+  --card:#ffffff;
+  --blue-bg:#e8f4fb;--blue-text:#0083C4;
+  --green-bg:#e4f5dc;--green-text:#1e6b04;
+  --amber-bg:#fef0d6;--amber-text:#7a4500;
+  --red-bg:#fdeaea;--red-text:#8b1a1a;
+  --purple-bg:#eeedfb;--purple-text:#38318a;
+  --ok:#0083C4;
+  --r:8px;--rl:12px;
+  --font:'Open Sans',system-ui,sans-serif;
+  --font-d:'Cinzel',Georgia,serif;
+  --shadow:0 2px 10px rgba(54,54,60,0.06),0 1px 2px rgba(54,54,60,0.04);
+}
+/* dark-mode removed — Townsen site is always light */
+*{box-sizing:border-box;margin:0;padding:0}
+html{scrollbar-color:rgba(128,128,128,.15) transparent}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(128,128,128,.2);border-radius:3px}
+body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:13px;min-height:100vh;-webkit-font-smoothing:antialiased}
+.app{max-width:1500px;margin:0 auto;padding:18px 16px}
+
+/* ── Cards & Buttons ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--rl);padding:16px 20px;margin-bottom:12px;box-shadow:var(--shadow)}
+.btn{padding:6px 18px;font-size:11px;font-weight:600;border:1.5px solid var(--border2);border-radius:99px;cursor:pointer;background:transparent;color:var(--text2);font-family:var(--font);transition:all .15s;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;text-transform:uppercase;letter-spacing:.06em}
+.btn:hover{background:var(--bg2);color:var(--blue-text);border-color:var(--blue-text)}
+.btn-p{padding:6px 20px;font-size:11px;font-weight:700;border:none;border-radius:99px;cursor:pointer;background:#0083C4;color:#ffffff;font-family:var(--font);transition:opacity .15s;text-transform:uppercase;letter-spacing:.06em;display:inline-flex;align-items:center;gap:5px}
+.btn-p:hover{opacity:.85}
+.btn-g{padding:6px 18px;font-size:11px;font-weight:700;border:none;border-radius:99px;cursor:pointer;background:var(--green-bg);color:var(--green-text);font-family:var(--font);transition:opacity .15s;text-transform:uppercase;letter-spacing:.06em;display:inline-flex;align-items:center;gap:5px}
+.btn-g:hover{opacity:.82}
+.btn-d{padding:6px 18px;font-size:11px;font-weight:600;border:none;border-radius:99px;cursor:pointer;background:var(--red-bg);color:var(--red-text);font-family:var(--font);transition:opacity .15s;text-transform:uppercase;letter-spacing:.06em;display:inline-flex;align-items:center;gap:5px}
+.btn-d:hover{opacity:.82}
+
+/* ── Inputs ── */
+select,input[type=text],input[type=email]{font-family:var(--font);font-size:12px;padding:6px 12px;border:1.5px solid var(--border2);border-radius:99px;background:var(--card);color:var(--text);height:32px;outline:none;transition:border-color .15s,box-shadow .15s}
+select:focus,input:focus{border-color:#0083C4;box-shadow:0 0 0 3px rgba(0,131,196,.12)}
+select option{background:var(--card);color:var(--text)}
+
+/* ── Badges ── */
+.badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700;letter-spacing:.02em;white-space:nowrap}
+.b-ok{background:var(--green-bg);color:var(--green-text)}
+.b-warn{background:var(--amber-bg);color:var(--amber-text)}
+.b-due{background:var(--red-bg);color:var(--red-text)}
+.b-na{background:var(--bg2);color:var(--text3)}
+.b-blue{background:var(--blue-bg);color:var(--blue-text)}
+.b-purple{background:var(--purple-bg);color:var(--purple-text)}
+.b-done{background:var(--green-bg);color:var(--green-text)}
+
+/* ── Tabs ── */
+.tab{padding:5px 16px;font-size:11px;border:1.5px solid var(--border2);border-radius:99px;cursor:pointer;background:transparent;color:var(--text2);font-family:var(--font);transition:all .15s;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.tab:hover{background:var(--bg2);color:var(--blue-text);border-color:var(--blue-text)}
+.tab.active{background:#0083C4;color:#ffffff;border-color:transparent}
+
+/* ── Metrics ── */
+.metric{background:#ffffff;border:1px solid var(--border);border-radius:var(--rl);padding:11px 16px;flex:1 1 90px;min-width:90px;border-top:3px solid #0083C4}
+.metric .lbl{font-size:10px;color:#0083C4;margin-bottom:4px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.metric .val{font-size:24px;font-weight:700;letter-spacing:-.02em;color:#0E566F}
+
+/* ── Table ── */
+.tbl-wrap{border:1px solid var(--border);border-radius:var(--rl);overflow:auto;max-height:calc(100vh - 330px)}
+table{width:100%;border-collapse:collapse;font-size:12px;min-width:1220px}
+th{background:#ffffff;font-weight:700;font-size:10px;color:#0083C4;padding:10px;text-align:left;border-bottom:2px solid #0083C4;white-space:nowrap;position:sticky;top:0;z-index:2;letter-spacing:.07em;text-transform:uppercase}
+td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:middle;white-space:nowrap}
+tr:last-child td{border-bottom:none}
+tr.row:hover td{background:var(--bg2);cursor:pointer}
+
+/* ── Checkbox ── */
+.cb{width:20px;height:20px;border-radius:6px;border:2px solid var(--border3);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:border-color .12s,background .12s;flex-shrink:0;user-select:none}
+.cb:hover{border-color:var(--ok)}
+.cb.on{border:none;background:var(--ok)}
+.cb.on::after{content:'✓';color:#fff;font-size:12px;font-weight:700;line-height:1}
+
+/* ── Header ── */
+.hdr{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;border-top:4px solid #0083C4 !important;border-radius:0 0 var(--rl) var(--rl) !important}
+.hdr h1{font-size:20px;font-weight:700;letter-spacing:.04em;font-family:var(--font-d);color:#0E566F;text-transform:uppercase}
+.hdr .sub{font-size:11px;color:var(--text2);margin-top:4px;letter-spacing:.03em}
+
+/* ── Layout helpers ── */
+.tabs{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px}
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+.metrics{display:flex;gap:8px;flex-wrap:wrap}
+
+/* ── Drawer ── */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.32);z-index:100}
+.overlay.on{display:flex;align-items:flex-start;justify-content:flex-end}
+.drawer{width:490px;max-width:96vw;height:100vh;background:var(--card);border-left:1px solid var(--border);border-top:4px solid #0083C4;overflow-y:auto;padding:22px 20px;animation:slideIn .22s ease}
+.dl{display:grid;grid-template-columns:134px 1fr;gap:6px 12px;font-size:13px;margin-bottom:16px}
+.dl .k{color:var(--text2);font-weight:500}
+.stitle{font-size:10px;font-weight:700;color:#0083C4;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;margin-top:16px}
+.rep{border-left:3px solid var(--border2);padding:4px 10px;margin-bottom:8px;font-size:12px}
+.rep .rd{font-weight:700;font-size:11px}
+.rep .rn{color:var(--text2);margin-top:2px;line-height:1.45}
+.trow{display:flex;align-items:center;gap:10px;padding:9px 0;cursor:pointer}
+.trow+.trow{border-top:1px solid var(--border)}
+.trow-label{flex:1}
+.trow-label.done{text-decoration:line-through;opacity:.55}
+
+/* ── Forms ── */
+.fg2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fg label{display:block;font-size:11px;color:var(--text2);margin-bottom:4px;font-weight:500}
+.fg input,.fg select{width:100%}
+
+/* ── Alert rows ── */
+.arow{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);gap:10px;flex-wrap:wrap}
+.arow:last-child{border-bottom:none}
+.nav-row{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.nav-row h2{font-size:15px;font-weight:700;font-family:var(--font-d);color:#0E566F;text-transform:uppercase;letter-spacing:.06em}
+
+/* ── Toast ── */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#0083C4;color:#fff;padding:10px 28px;border-radius:99px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;z-index:300;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap;box-shadow:0 4px 20px rgba(0,131,196,.35)}
+.toast.on{opacity:1}
+
+/* ── Views ── */
+.view{display:none}.view.active{display:block}
+.cbadge{border-radius:99px;padding:1px 6px;font-size:9px;font-weight:700;margin-left:3px}
+.ci{font-size:10px;color:var(--ok);font-weight:600;margin-top:1px}
+
+/* ── Email tags ── */
+.etag{display:inline-flex;align-items:center;gap:5px;background:var(--bg2);border:1px solid var(--border);border-radius:99px;padding:3px 10px;font-size:12px;margin:3px}
+.etag button{background:none;border:none;cursor:pointer;color:var(--text2);font-size:14px;line-height:1;padding:0}
+
+/* ── Modal ── */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.42);z-index:200;align-items:center;justify-content:center}
+.modal-bg.on{display:flex}
+.modal{background:var(--card);border-radius:var(--rl);padding:24px;width:540px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.18)}
+.modal h3{font-size:15px;font-weight:700;margin-bottom:14px;font-family:var(--font-d);color:#0E566F;text-transform:uppercase;letter-spacing:.06em}
+
+/* ── Calendar ── */
+.cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
+.cal-nav h3{font-size:15px;font-weight:700;font-family:var(--font-d);color:#0E566F;text-transform:uppercase;letter-spacing:.06em}
+.cal-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--text2);margin-bottom:12px}
+.cal-legend span{display:flex;align-items:center;gap:5px}
+.cal-legend i{display:inline-block;width:10px;height:10px;border-radius:50%}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--border2);border:1px solid var(--border2);border-radius:var(--rl);overflow:hidden}
+.cal-dow{background:#0083C4;text-align:center;font-size:10px;font-weight:700;color:#ffffff;padding:8px 0;text-transform:uppercase;letter-spacing:.08em}
+.cal-day{background:var(--card);min-height:88px;padding:6px;position:relative}
+.cal-day.om{background:var(--bg2);opacity:.45}
+.cal-day.td{background:var(--blue-bg)}
+.cal-dn{font-size:12px;font-weight:700;color:var(--text3);margin-bottom:4px}
+.cal-day.td .cal-dn{color:var(--blue-text)}
+.cev{font-size:10px;font-weight:600;padding:2px 5px;border-radius:4px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;line-height:1.4}
+.cev:hover{opacity:.8}
+.cev.epm{background:var(--blue-bg);color:var(--blue-text)}
+.cev.eph{background:var(--purple-bg);color:var(--purple-text)}
+.cev.edu{background:var(--red-bg);color:var(--red-text)}
+.cev.ewn{background:var(--amber-bg);color:var(--amber-text)}
+.cal-more{font-size:10px;color:var(--text2);cursor:pointer;padding:1px 4px}
+.cal-more:hover{color:var(--blue-text)}
+.cpop{display:none;position:fixed;z-index:250;background:var(--card);border:1px solid var(--border2);border-radius:var(--rl);padding:12px 14px;width:264px;box-shadow:0 6px 24px rgba(0,0,0,.14)}
+.cpop.on{display:block}
+.cpop h4{font-size:13px;font-weight:700;margin-bottom:8px}
+.cpop-item{font-size:12px;padding:5px 0;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:8px}
+.cpop-item:last-child{border-bottom:none}
+.cpop-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:3px}
+
+/* ── Analytics tabs ── */
+.atabs{display:flex;gap:4px;flex-wrap:wrap;margin:8px 0 14px;border-bottom:1px solid var(--border);padding-bottom:0}
+.atab{padding:9px 16px;background:transparent;border:none;border-bottom:3px solid transparent;color:var(--text2);font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;letter-spacing:.03em;margin-bottom:-1px}
+.atab:hover{color:#0083C4;background:rgba(0,131,196,0.04)}
+.atab.active{color:#0083C4;border-bottom-color:#0083C4;background:rgba(0,131,196,0.06)}
+.apanel{display:none}
+.apanel.active{display:block;animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── Charts ── */
+.ch-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.ch-grid.ch-grid-2{grid-template-columns:repeat(2,1fr)}
+.ch-card{margin-bottom:0;border-top:3px solid #0083C4}
+.ch-card.ch-wide{grid-column:span 3}
+.ch-grid-2 .ch-card.ch-wide{grid-column:span 2}
+.apanel > .ch-card.ch-wide{grid-column:auto}
+.ch-wrap{position:relative;height:240px;margin-top:8px}
+.ch-wrap.ch-lg{height:340px}
+.ch-card.ch-wide .ch-wrap{height:280px}
+@media(max-width:1100px){.ch-grid{grid-template-columns:repeat(2,1fr)}.ch-card.ch-wide{grid-column:span 2}}
+@media(max-width:680px){.ch-grid,.ch-grid.ch-grid-2{grid-template-columns:1fr}.ch-card.ch-wide{grid-column:span 1}}
+
+/* Facility breakdown table */
+.fac-tbl{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
+.fac-tbl th,.fac-tbl td{padding:8px 12px;border-bottom:1px solid var(--border);text-align:left}
+.fac-tbl th{background:#f8fafc;color:#0083C4;font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.07em}
+.fac-tbl td.num{text-align:right;font-variant-numeric:tabular-nums}
+
+@keyframes slideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}
+@media(max-width:680px){.fg2{grid-template-columns:1fr}.hdr{flex-direction:column;align-items:flex-start}}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ╔══════════════════════════════════════════════════════╗
+     ║  HEADER                                              ║
+     ╚══════════════════════════════════════════════════════╝ -->
+<div class="card hdr">
+  <div>
+    <h1>Equipment Maintenance Portal</h1>
+    <div class="sub" id="hdr-sub">Loading…</div>
+  </div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap">
+    <button class="btn" onclick="go('tasks')">✓ Tasks <span id="tbadge" class="cbadge" style="background:var(--green-bg);color:var(--green-text)">0</span></button>
+    <button class="btn" onclick="go('alerts')">⚠ Alerts <span id="abadge" class="cbadge" style="background:var(--red-bg);color:var(--red-text)">0</span></button>
+    <button class="btn" onclick="go('calendar')">📅 Calendar</button>
+    <button class="btn" onclick="go('charts')">📊 Charts</button>
+    <button class="btn" onclick="go('notify')">📧 Notify</button>
+    <button class="btn" onclick="go('add')">+ Add</button>
+    <button class="btn" onclick="doExport()">↓ CSV</button>
+    <button id="submitBtn" class="btn-p" style="display:none;background:#1e6b04" onclick="submitPending()">✓ Submit (0)</button>
+    <button class="btn-p" onclick="go('main')">Dashboard</button>
+  </div>
+</div>
+
+<!-- ╔══════════════════════════════════════════════════════╗
+     ║  MAIN DASHBOARD                                      ║
+     ╚══════════════════════════════════════════════════════╝ -->
+<div id="view-main" class="view active">
+  <div class="card" style="padding-bottom:10px">
+    <div class="tabs" id="tabs"></div>
+    <div class="filters">
+      <select id="fSt" onchange="render()">
+        <option value="">All statuses</option>
+        <option value="due">Overdue</option>
+        <option value="warn">Due soon (≤60d)</option>
+        <option value="ok">OK</option>
+      </select>
+      <select id="fTy" onchange="render()">
+        <option value="">PM + Physicist</option>
+        <option value="pm">Next PM only</option>
+        <option value="phys">Physicist only</option>
+      </select>
+      <input type="text" id="fQ" placeholder="Search equipment…" oninput="render()" style="width:190px">
+      <button class="btn" onclick="doReset()" style="margin-left:auto;font-size:11px;opacity:.65">↻ Reset</button>
+    </div>
+    <div class="metrics" id="metrics"></div>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th style="width:32px">PM</th>
+        <th style="width:32px">Phys</th>
+        <th>Equipment</th>
+        <th>Facility</th>
+        <th>Serial #</th>
+        <th>Model</th>
+        <th>Freq</th>
+        <th>Last PM</th>
+        <th>Next PM</th>
+        <th>PM Status</th>
+        <th>Physicist Due</th>
+        <th>Phys Status</th>
+        <th>Service Contact</th>
+        <th>Contract</th>
+        <th>Warranty</th>
+        <th>Repairs</th>
+        <th>Expenses</th>
+      </tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ╔══════════════════════════════════════════════════════╗
+     ║  ALERTS                                              ║
+     ╚══════════════════════════════════════════════════════╝ -->
+<div id="view-alerts" class="view">
+  <div class="nav-row"><button class="btn" onclick="go('main')">← Back</button><h2>Active Alerts</h2></div>
+  <div class="card" id="panel-alerts"></div>
+</div>
+
+<!-- ╔══════════════════════════════════════════════════════╗
+     ║  TASKS                                               ║
+     ╚══════════════════════════════════════════════════════╝ -->
+<div id="view-tasks" class="view">
+  <div class="nav-row"><button class="btn" onclick="go('main')">← Back</button><h2>Completed Tasks</h2><span id="tasks-ct" style="font-size:11px;color:var(--text3)"></span></div>
+  <div class="card" id="panel-tasks"></div>
+</div>
+
+<!-- ╔══════════════════════════════════════════════════════╗
+     ║  ADD EQUIPMENT                                       ║
+     ╚══════════════════════════════════════════════════════╝ -->
+<div id="view-add" class="view">
+  <div class="nav-row"><button class="btn" onclick="go('main')">← Back</button><h2>Add Equipment</h2></div>
+  <div class="card">
+    <div class="fg2 fg" id="add-form"></div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn-p" onclick="doAdd()">Save Equipment</button>
+      <button class="btn" onclick="go('main')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ╔══════════════════════════════════════════════════════╗
+     ║  EDIT EQUIPMENT                                      ║
+     ╚══════════════════════════════════════════════════════╝ -->
+<div id="view-edit" class="view">
+  <div class="nav-row"><button class="btn" onclick="openDrawer(editIdx)">← Back</button><h2 id="edit-h">Edit</h2></div>
+  <div class="card">
+    <div class="fg2 fg" id="edit-form"></div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn-p" onclick="doEdit()">Save Changes</button>
+      <button class="btn" onclick="openDrawer(editIdx)">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ╔══════════════════════════════════════════════════════╗
+     ║  CALENDAR                                            ║
+     ╚══════════════════════════════════════════════════════╝ -->
+<div id="view-calendar" class="view">
+  <div class="nav-row"><button class="btn" onclick="go('main')">← Back</button><h2>Maintenance Calendar</h2></div>
+  <div class="card">
+    <div class="cal-nav">
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="btn" onclick="calMv(-1)">←</button>
+        <h3 id="cal-lbl"></h3>
+        <button class="btn" onclick="calMv(1)">→</button>
+        <button class="btn" onclick="calToday()" style="font-size:11px">Today</button>
+      </div>
+      <select id="cal-fac" onchange="renderCal()" style="height:30px;font-size:12px">
+        <option value="">All facilities</option>
+        <option>Humble</option><option>Katy</option><option>Med Center</option>
+        <option>North Loop</option><option>River Oaks</option><option>Southwest</option>
+        <option>Spring</option><option>West</option>
+      </select>
+    </div>
+    <div class="cal-legend">
+      <span><i style="background:var(--blue-text)"></i> Next PM</span>
+      <span><i style="background:var(--purple-text)"></i> Physicist Due</span>
+      <span><i style="background:var(--red-text)"></i> Overdue</span>
+      <span><i style="background:var(--amber-text)"></i> Due ≤60d</span>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+  </div>
+  <div class="card">
+    <div style="font-size:13px;font-weight:700;margin-bottom:10px">Upcoming This Month</div>
+    <div id="cal-up"></div>
+  </div>
+</div>
+
+<!-- ╔══════════════════════════════════════════════════════╗
+     ║  NOTIFICATIONS                                       ║
+     ╚══════════════════════════════════════════════════════╝ -->
+<div id="view-notify" class="view">
+  <div class="nav-row"><button class="btn" onclick="go('main')">← Back</button><h2>Notification Settings</h2></div>
+  <div class="card">
+    <div class="stitle" style="margin-top:0">Email Recipients</div>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:10px">Add addresses to receive alert summaries.</p>
+    <div id="etags" style="margin-bottom:10px;min-height:32px"></div>
+    <div style="display:flex;gap:8px">
+      <input type="email" id="einput" placeholder="name@example.com" style="flex:1" onkeydown="if(event.key==='Enter')addEmail()">
+      <button class="btn-p" onclick="addEmail()">Add</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="stitle" style="margin-top:0">Alert Email Preview</div>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:10px">Preview an alert email based on current overdue/due-soon items.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn-p" onclick="prevEmail()">Preview Alert Email</button>
+      <button class="btn" onclick="cpyTpl()">Copy Template</button>
+    </div>
+  </div>
+</div>
+
+<!-- ╔══════════════════════════════════════════════════════╗
+     ║  CHARTS / ANALYTICS                                  ║
+     ╚══════════════════════════════════════════════════════╝ -->
+<div id="view-charts" class="view">
+  <div class="nav-row"><button class="btn" onclick="go('main')">← Back</button><h2>Analytics Dashboard</h2></div>
+  <div class="atabs">
+    <button class="atab active" data-atab="overview" onclick="switchAnalytics('overview')">📊 Overview</button>
+    <button class="atab" data-atab="pm"       onclick="switchAnalytics('pm')">🩺 PM &amp; Physicist</button>
+    <button class="atab" data-atab="facility" onclick="switchAnalytics('facility')">🏥 Facilities</button>
+    <button class="atab" data-atab="coverage" onclick="switchAnalytics('coverage')">🛡 Coverage</button>
+    <button class="atab" data-atab="repairs"  onclick="switchAnalytics('repairs')">🔧 Repairs &amp; Costs</button>
+  </div>
+
+  <!-- Overview -->
+  <div id="apanel-overview" class="apanel active">
+    <div class="metrics" id="ch-metrics" style="margin-bottom:14px"></div>
+    <div class="ch-grid">
+      <div class="card ch-card"><div class="stitle" style="margin-top:0">PM Status</div><div class="ch-wrap"><canvas id="ov-pm"></canvas></div></div>
+      <div class="card ch-card"><div class="stitle" style="margin-top:0">Physicist Status</div><div class="ch-wrap"><canvas id="ov-phys"></canvas></div></div>
+      <div class="card ch-card"><div class="stitle" style="margin-top:0">Equipment by Facility</div><div class="ch-wrap"><canvas id="ov-fac"></canvas></div></div>
+    </div>
+  </div>
+
+  <!-- PM & Physicist -->
+  <div id="apanel-pm" class="apanel">
+    <div class="ch-grid ch-grid-2">
+      <div class="card ch-card"><div class="stitle" style="margin-top:0">PM Status Distribution</div><div class="ch-wrap ch-lg"><canvas id="ch-pm"></canvas></div></div>
+      <div class="card ch-card"><div class="stitle" style="margin-top:0">Physicist Due Status</div><div class="ch-wrap ch-lg"><canvas id="ch-phys"></canvas></div></div>
+    </div>
+    <div class="card ch-card ch-wide" style="margin-top:12px">
+      <div class="stitle" style="margin-top:0">PM Frequency Mix</div>
+      <div class="ch-wrap"><canvas id="ch-freq"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Facilities -->
+  <div id="apanel-facility" class="apanel">
+    <div class="card ch-card ch-wide">
+      <div class="stitle" style="margin-top:0">Equipment by Facility</div>
+      <div class="ch-wrap ch-lg"><canvas id="ch-fac"></canvas></div>
+    </div>
+    <div class="card ch-card ch-wide" style="margin-top:12px">
+      <div class="stitle" style="margin-top:0">Facility Breakdown</div>
+      <div id="fac-table"></div>
+    </div>
+  </div>
+
+  <!-- Coverage -->
+  <div id="apanel-coverage" class="apanel">
+    <div class="ch-grid ch-grid-2">
+      <div class="card ch-card"><div class="stitle" style="margin-top:0">Service Contract Coverage</div><div class="ch-wrap ch-lg"><canvas id="ch-contract"></canvas></div></div>
+      <div class="card ch-card"><div class="stitle" style="margin-top:0">Warranty Coverage</div><div class="ch-wrap ch-lg"><canvas id="ch-warranty"></canvas></div></div>
+    </div>
+  </div>
+
+  <!-- Repairs -->
+  <div id="apanel-repairs" class="apanel">
+    <div class="card ch-card ch-wide">
+      <div class="stitle" style="margin-top:0">Repair Count by Facility</div>
+      <div class="ch-wrap"><canvas id="ch-repairs"></canvas></div>
+    </div>
+    <div class="card ch-card ch-wide" style="margin-top:12px">
+      <div class="stitle" style="margin-top:0">Repair Expenses by Facility (USD)</div>
+      <div class="ch-wrap"><canvas id="ch-expenses"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- Calendar popover -->
+<div class="cpop" id="cpop">
+  <button onclick="closePop()" style="float:right;background:none;border:none;cursor:pointer;font-size:16px;color:var(--text2)">✕</button>
+  <h4 id="cpop-title"></h4>
+  <div id="cpop-body"></div>
+</div>
+
+</div><!-- /.app -->
+
+<!-- ╔══════════════════════════════════════════════════════╗
+     ║  DRAWER                                              ║
+     ╚══════════════════════════════════════════════════════╝ -->
+<div class="overlay" id="overlay" onclick="closeDrawer()">
+  <div class="drawer" onclick="event.stopPropagation()">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+      <div>
+        <span class="badge b-blue" id="d-fac"></span>
+        <strong id="d-name" style="font-size:17px;font-family:var(--font-d);display:block;margin-top:6px;line-height:1.2;color:#0E566F;text-transform:uppercase;letter-spacing:.04em"></strong>
+      </div>
+      <button onclick="closeDrawer()" style="background:none;border:none;cursor:pointer;font-size:22px;color:var(--text2);padding:0;line-height:1;margin-left:10px">✕</button>
+    </div>
+    <div id="d-acts" style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap"></div>
+    <div id="d-tasks" class="card" style="background:var(--bg2);margin-bottom:12px"></div>
+    <div id="d-body"></div>
+  </div>
+</div>
+
+<!-- ╔══════════════════════════════════════════════════════╗
+     ║  EMAIL MODAL                                         ║
+     ╚══════════════════════════════════════════════════════╝ -->
+<div class="modal-bg" id="modal-bg" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <h3>Alert Email Preview</h3>
+    <div id="modal-body" style="font-size:13px;line-height:1.7"></div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button class="btn-p" onclick="cpyEmail()">Copy to clipboard</button>
+      <button class="btn" onclick="closeModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════════════════════
+//  EQUIPMENT DATA  —  49 items across 8 facilities
+//  Sources: equipment_maintenance_portal.html,
+//           equipment_maintenance_portal_missingdata.html,
+//           equipment_maintenance_export 04152026CC.csv
+// ════════════════════════════════════════════════════════════
+const INIT = [
+// ─── HUMBLE (15) ───────────────────────────────────────────
+{"name":"U/S GE Logique","location":"Humble","serial":"608194WXO","model":"R6/R7","pmFreq":"Annual","lastPM":"","nextPM":"","physicistDue":"","serviceContract":"","warranty":"No","servicePerson":"","servicePhone":"","expenses":"","repairCount":0,"repairs":[]},
+{"name":"DEXA","location":"Humble","serial":"351978","model":"prodigy Encore SW","pmFreq":"Annual","lastPM":"10/30/2025","nextPM":"10/30/2026","physicistDue":"3/3/2027","serviceContract":"no","warranty":"No","servicePerson":"Chris Light","servicePhone":"832-849-9088","expenses":"Since 9/1/24 $2,540.00","repairCount":7,"repairs":[
+  {"date":"3/11/2023","cost":"","notes":"DEXA solutions called out to replace the collimator"},
+  {"date":"9/18/2023","cost":"","notes":"Chris repaired by reconnecting switch, no charge"},
+  {"date":"11/28/2023","cost":"","notes":"PM"},
+  {"date":"12/6/2023","cost":"","notes":"Replaced power supply"},
+  {"date":"2/15/2024","cost":"","notes":"Had to reset the DIB (no charge)"},
+  {"date":"10/29/2025","cost":"$596.00","notes":""},
+  {"date":"12/5/2025","cost":"$1,944.00","notes":"Replaced power supply"}
+]},
+{"name":"GE 9900 #1 C-arm","location":"Humble","serial":"E2-1023","model":"00-881190-01","pmFreq":"Annual","lastPM":"2/18/2026","nextPM":"2/18/2027","physicistDue":"9/3/2026","serviceContract":"Yes","warranty":"No","servicePerson":"GE","servicePhone":"800-437-1171","expenses":"Since 9/1/24 $14,285.00","repairCount":7,"repairs":[
+  {"date":"9/9/2024","cost":"$2,077.00","notes":"Replaced GE batteries"},
+  {"date":"12/11/2024","cost":"$10,117.00","notes":"Replaced Tube and tube thermistor"},
+  {"date":"4/2/2025","cost":"","notes":"GE PM — Under service contract"},
+  {"date":"9/8/2025","cost":"","notes":"Replaced power plug and wisp repair"},
+  {"date":"2/18/2026","cost":"","notes":"GE PM"}
+]},
+{"name":"GE 9900 #2 C-arm","location":"Humble","serial":"E2-4621","model":"00-881190-01","pmFreq":"Annual","lastPM":"8/22/2025","nextPM":"8/22/2026","physicistDue":"3/3/2027","serviceContract":"Yes","warranty":"No","servicePerson":"GE","servicePhone":"800-437-1171","expenses":"Since 9/1/24 $1,000.00","repairCount":5,"repairs":[
+  {"date":"12/20/2023","cost":"","notes":"Replaced broken cable"},
+  {"date":"9/20/2024","cost":"$1,000.00","notes":"Chris Light"},
+  {"date":"6/20/2025","cost":"","notes":"Replaced tech monitor (no charge)"},
+  {"date":"8/29/2025","cost":"","notes":"No charge under service contract"}
+]},
+{"name":"GE 9900 #3 C-arm","location":"Humble","serial":"E2-505500","model":"00-881190-01","pmFreq":"Annual","lastPM":"5/7/2025","nextPM":"5/7/2026","physicistDue":"5/7/2026","serviceContract":"Yes","warranty":"No","servicePerson":"GE","servicePhone":"800-437-1171","expenses":"Since 9/1/24 $22,810.00","repairCount":15,"repairs":[
+  {"date":"4/25/2025","cost":"","notes":"C-arm shut down — replaced main frame back plane"},
+  {"date":"7/16/2025","cost":"","notes":"Repaired High Boost and images sending to PACS"}
+]},
+{"name":"GE 9900 #4 C-arm","location":"Humble","serial":"E9-2821","model":"00-881190-01","pmFreq":"Annual","lastPM":"2/18/2026","nextPM":"2/18/2027","physicistDue":"5/7/2026","serviceContract":"Yes","warranty":"No","servicePerson":"GE","servicePhone":"800-437-1171","expenses":"Since 9/1/24 $4,100.00","repairCount":6,"repairs":[
+  {"date":"9/4/2024","cost":"$4,301.00","notes":"Replaced GE batteries and charger board"},
+  {"date":"4/2/2025","cost":"","notes":"GE PM"}
+]},
+{"name":"GE one C-arm","location":"Humble","serial":"BB6SV1900407HL","model":"5075400","pmFreq":"Annual","lastPM":"2/18/2026","nextPM":"2/18/2027","physicistDue":"3/3/2027","serviceContract":"Yes","warranty":"No","servicePerson":"GE","servicePhone":"800-437-1171","expenses":"Since 9/1/24 $0.00","repairCount":7,"repairs":[
+  {"date":"6/20/2025","cost":"","notes":"Repaired stripped lateral lock"},
+  {"date":"2/18/2026","cost":"","notes":"GE PM"}
+]},
+{"name":"GE mini C arm","location":"Humble","serial":"BB5SU2000212HL","model":"5999140","pmFreq":"Annual","lastPM":"2/18/2026","nextPM":"2/18/2027","physicistDue":"3/3/2027","serviceContract":"Yes","warranty":"No","servicePerson":"GE","servicePhone":"800-437-1171","expenses":"Since 9/1/24 $0.00","repairCount":4,"repairs":[
+  {"date":"4/24/2025","cost":"$360.00","notes":"Replace broken skin spacer"},
+  {"date":"2/18/2026","cost":"","notes":"GE PM"}
+]},
+{"name":"GE Portable","location":"Humble","serial":"10790449WK3","model":"AMX4+","pmFreq":"Annual","lastPM":"9/5/2025","nextPM":"9/5/2026","physicistDue":"9/3/2026","serviceContract":"no","warranty":"No","servicePerson":"Pat Thai","servicePhone":"713-802-9868","expenses":"Since 9/1/2024 $1,825.00","repairCount":4,"repairs":[
+  {"date":"9/5/2025","cost":"$1,600.00","notes":"Replaced grid and recalibrated DR panel"},
+  {"date":"9/5/2025","cost":"$225.00","notes":"PM"}
+]},
+{"name":"Micro-x Portable","location":"Humble","serial":"363","model":"RV35","pmFreq":"Annual","lastPM":"","nextPM":"3/10/2027","physicistDue":"4/8/2027","serviceContract":"NO","warranty":"yes","servicePerson":"","servicePhone":"","expenses":"","repairCount":0,"repairs":[]},
+{"name":"X-Ray","location":"Humble","serial":"SU452103006","model":"SEDECAL VISION DR+","pmFreq":"Annual","lastPM":"1/16/2026","nextPM":"1/16/2027","physicistDue":"9/3/2026","serviceContract":"NO","warranty":"No","servicePerson":"Tuckett","servicePhone":"281-242-9729","expenses":"Since 9/1/2024 $7,579.00","repairCount":0,"repairs":[]},
+{"name":"GE CT","location":"Humble","serial":"6190","model":"9341-15942","pmFreq":"Bi-Annual","lastPM":"2/12/2026","nextPM":"8/12/2026","physicistDue":"9/3/2026","serviceContract":"NO","warranty":"No","servicePerson":"Chris Light","servicePhone":"832-849-9088","expenses":"Since 9/1/2024 $29,724.00","repairCount":31,"repairs":[
+  {"date":"12/4/2025","cost":"$3,669.00","notes":"Replaced bad pump"},
+  {"date":"1/12/2026","cost":"$3,194.00","notes":"Phantom broke, water in foot pedal"},
+  {"date":"2/12/2026","cost":"$650.00","notes":"PM"}
+]},
+{"name":"GE 450 MRI","location":"Humble","serial":"HM0254","model":"5393177","pmFreq":"Bi-Annual","lastPM":"2/9/2026","nextPM":"8/9/2026","physicistDue":"3/4/2027","serviceContract":"Yes","warranty":"No","servicePerson":"","servicePhone":"","expenses":"","repairCount":11,"repairs":[
+  {"date":"10/16/2025","cost":"","notes":"Replaced motor for table"},
+  {"date":"12/31/2025","cost":"","notes":"Replaced motor for table again"}
+]},
+{"name":"Mammo","location":"Humble","serial":"702894BU7","model":"Pristina","pmFreq":"Annual","lastPM":"2/4/2026","nextPM":"2/4/2027","physicistDue":"3/3/2027","serviceContract":"No","warranty":"No","servicePerson":"Joseph Johnson","servicePhone":"800-437-1171","expenses":"$5,975.00","repairCount":4,"repairs":[
+  {"date":"5/27/2025","cost":"$1,000.00","notes":"Bad storm caused connection issues"}
+]},
+{"name":"Trophon U/S Sterilizer","location":"Humble","serial":"832781-006","model":"NO5000-1","pmFreq":"Annual","lastPM":"8/30/2025","nextPM":"8/30/2026","physicistDue":"","serviceContract":"NO","warranty":"NO","servicePerson":"Ryan at VXS","servicePhone":"","expenses":"$4,114.00","repairCount":3,"repairs":[
+  {"date":"8/29/2025","cost":"$4,114.00","notes":"PM"}
+]},
+
+// ─── WEST (11) — New equipment as of 4/15/2026 ─────────────
+// CSV source: lastPM="NEW" (no prior PM), nextPM="6 MONTHS" or "1 YEAR",
+// physicistDue="1 YEAR" or "N/A" — converted to real dates from install date 4/15/2026:
+//   Bi-Annual → first PM due 10/15/2026 (6 months)
+//   Annual    → first PM due 4/15/2027  (1 year)
+//   Physicist  → due 4/15/2027          (1 year)
+{"name":"CT","location":"West","serial":"422273HM3","model":"Optima 660","pmFreq":"Bi-Annual","lastPM":"","nextPM":"10/15/2026","physicistDue":"4/15/2027","serviceContract":"","warranty":"Yes","servicePerson":"GE","servicePhone":"800-437-1171","expenses":"","repairCount":0,"repairs":[]},
+{"name":"MRI 1.5","location":"West","serial":"HM1684","model":"Optima 450W 1.5T GEM","pmFreq":"Bi-Annual","lastPM":"","nextPM":"10/15/2026","physicistDue":"4/15/2027","serviceContract":"","warranty":"Yes","servicePerson":"GE","servicePhone":"800-437-1171","expenses":"","repairCount":0,"repairs":[]},
+{"name":"MRI 3T","location":"West","serial":"7AR0300","model":"Signa Hero 3.0T","pmFreq":"Bi-Annual","lastPM":"","nextPM":"10/15/2026","physicistDue":"4/15/2027","serviceContract":"","warranty":"Yes","servicePerson":"GE","servicePhone":"800-437-1171","expenses":"","repairCount":0,"repairs":[]},
+{"name":"X-ray","location":"West","serial":"HL075RHM","model":"Definium Tempo Pro G1 1D MSX","pmFreq":"Annual","lastPM":"","nextPM":"4/15/2027","physicistDue":"4/15/2027","serviceContract":"","warranty":"Yes","servicePerson":"GE","servicePhone":"800-437-1171","expenses":"","repairCount":0,"repairs":[]},
+{"name":"Portable","location":"West","serial":"1008154WK4","model":"AMX 4 Plus","pmFreq":"Annual","lastPM":"","nextPM":"4/15/2027","physicistDue":"4/15/2027","serviceContract":"","warranty":"Yes","servicePerson":"GE","servicePhone":"800-437-1171","expenses":"","repairCount":0,"repairs":[]},
+{"name":"Mini C-arm","location":"West","serial":"BB5SE2500214HL","model":"OEC ELITE MINIVIEW MAX","pmFreq":"Annual","lastPM":"","nextPM":"4/15/2027","physicistDue":"4/15/2027","serviceContract":"","warranty":"Yes","servicePerson":"GE","servicePhone":"800-437-1171","expenses":"","repairCount":0,"repairs":[]},
+{"name":"GE c-arm","location":"West","serial":"E2-3136","model":"OEC 9900 Elite VASMTS","pmFreq":"Annual","lastPM":"","nextPM":"4/15/2027","physicistDue":"4/15/2027","serviceContract":"","warranty":"Yes","servicePerson":"GE","servicePhone":"800-437-1171","expenses":"","repairCount":0,"repairs":[]},
+{"name":"GE c-arm","location":"West","serial":"E2-1240","model":"OEC 9900 Elite ESP","pmFreq":"Annual","lastPM":"","nextPM":"4/15/2027","physicistDue":"4/15/2027","serviceContract":"","warranty":"Yes","servicePerson":"GE","servicePhone":"800-437-1171","expenses":"","repairCount":0,"repairs":[]},
+{"name":"GE c-arm","location":"West","serial":"ESXXXX03868","model":"OEC 9900 Elite PMCARE","pmFreq":"Annual","lastPM":"","nextPM":"4/15/2027","physicistDue":"4/15/2027","serviceContract":"","warranty":"Yes","servicePerson":"GE","servicePhone":"800-437-1171","expenses":"","repairCount":0,"repairs":[]},
+{"name":"u/S GE","location":"West","serial":"RLEP440126","model":"LOGIQ E10","pmFreq":"Annual","lastPM":"","nextPM":"4/15/2027","physicistDue":"4/15/2027","serviceContract":"","warranty":"Yes","servicePerson":"GE","servicePhone":"800-437-1171","expenses":"","repairCount":0,"repairs":[]},
+{"name":"Trophon U/S Sterilizer","location":"West","serial":"","model":"","pmFreq":"Annual","lastPM":"","nextPM":"4/15/2027","physicistDue":"N/A","serviceContract":"","warranty":"Yes","servicePerson":"GE","servicePhone":"800-437-1171","expenses":"","repairCount":0,"repairs":[]},
+
+// ─── KATY (3) ──────────────────────────────────────────────
+{"name":"GE 450 MRI","location":"Katy","serial":"HM1267","model":"MR450W","pmFreq":"Bi-Annual","lastPM":"3/29/2026","nextPM":"9/29/2026","physicistDue":"9/26/2026","serviceContract":"Yes","warranty":"No","servicePerson":"","servicePhone":"","expenses":"","repairCount":25,"repairs":[
+  {"date":"7/27/2025","cost":"","notes":"PM"},
+  {"date":"10/23/2025","cost":"","notes":"PM"}
+]},
+{"name":"GE CT","location":"Katy","serial":"451207CN5","model":"VCT","pmFreq":"Bi-Annual","lastPM":"3/30/2026","nextPM":"9/30/2026","physicistDue":"10/1/2026","serviceContract":"","warranty":"No","servicePerson":"Chris Light","servicePhone":"832-849-9088","expenses":"Since 9/1/2024 $43,477.00","repairCount":17,"repairs":[
+  {"date":"11/3/2025","cost":"$2,800.00","notes":"Replaced CCB"},
+  {"date":"2/12/2026","cost":"$9,637.00","notes":"Bellows leaking oil — replaced heat exchanger"}
+]},
+{"name":"X-Ray","location":"Katy","serial":"CPD41895L22","model":"VZW2556RE3-45","pmFreq":"Annual","lastPM":"10/1/2025","nextPM":"9/23/2026","physicistDue":"10/21/2026","serviceContract":"","warranty":"No","servicePerson":"Tuckett","servicePhone":"281-242-9729","expenses":"$1,462.00","repairCount":4,"repairs":[
+  {"date":"9/24/2025","cost":"$718.00","notes":"PM"},
+  {"date":"10/22/2025","cost":"$425.00","notes":"Corrected SID issue"}
+]},
+
+// ─── NORTH LOOP (2) ────────────────────────────────────────
+{"name":"X-Ray","location":"North Loop","serial":"AFK823-0255","model":"","pmFreq":"Annual","lastPM":"2/3/2026","nextPM":"2/3/2027","physicistDue":"4/22/2026","serviceContract":"","warranty":"","servicePerson":"VXS","servicePhone":"","expenses":"","repairCount":0,"repairs":[]},
+{"name":"MRI","location":"North Loop","serial":"HM0135","model":"","pmFreq":"Bi-Annual","lastPM":"3/29/2026","nextPM":"9/29/2026","physicistDue":"10/23/2026","serviceContract":"","warranty":"","servicePerson":"","servicePhone":"","expenses":"","repairCount":1,"repairs":[
+  {"date":"11/4/2025","cost":"","notes":"Repaired artifact on QA — no charge under warranty"}
+]},
+
+// ─── MED CENTER (4) ────────────────────────────────────────
+{"name":"Hitachi Open MRI","location":"Med Center","serial":"H804","model":"","pmFreq":"Bi-Annual","lastPM":"10/23/2025","nextPM":"4/12/2026","physicistDue":"6/20/2026","serviceContract":"Yes","warranty":"No","servicePerson":"Paul Muehe","servicePhone":"936-276-8866","expenses":"","repairCount":7,"repairs":[
+  {"date":"10/23/2025","cost":"$2,165.00","notes":"PM"}
+]},
+{"name":"GE 1.5 MRI","location":"Med Center","serial":"R2812","model":"","pmFreq":"Bi-Annual","lastPM":"2/16/2026","nextPM":"8/16/2026","physicistDue":"7/9/2026","serviceContract":"Yes","warranty":"No","servicePerson":"SSI","servicePhone":"","expenses":"","repairCount":13,"repairs":[
+  {"date":"10/24/2025","cost":"","notes":"PM"},
+  {"date":"12/18/2025","cost":"$9,309.00","notes":"Non contract service repair"}
+]},
+{"name":"GE CT","location":"Med Center","serial":"292438CN9","model":"","pmFreq":"Bi-Annual","lastPM":"2/16/2026","nextPM":"8/16/2026","physicistDue":"6/20/2026","serviceContract":"","warranty":"No","servicePerson":"","servicePhone":"346-250-1010","expenses":"","repairCount":15,"repairs":[
+  {"date":"11/3/2025","cost":"$4,457.00","notes":"Anode High voltage tank"},
+  {"date":"12/18/2025","cost":"$914.00","notes":"Gantry display not working"}
+]},
+{"name":"X-Ray","location":"Med Center","serial":"SU-2000","model":"","pmFreq":"Annual","lastPM":"9/8/2025","nextPM":"9/8/2026","physicistDue":"7/7/2026","serviceContract":"","warranty":"No","servicePerson":"Tuckett","servicePhone":"281-242-9729","expenses":"","repairCount":0,"repairs":[]},
+
+// ─── SOUTHWEST (6) ─────────────────────────────────────────
+{"name":"X-ray","location":"Southwest","serial":"CPD42329A23","model":"VS300","pmFreq":"Annual","lastPM":"9/8/2025","nextPM":"9/8/2026","physicistDue":"10/21/2026","serviceContract":"","warranty":"No","servicePerson":"Tuckett","servicePhone":"281-242-9729","expenses":"$1,436.00","repairCount":2,"repairs":[
+  {"date":"9/8/2025","cost":"$718.00","notes":"PM"}
+]},
+{"name":"GE CT","location":"Southwest","serial":"433976CN8","model":"5124069-12","pmFreq":"Bi-Annual","lastPM":"3/26/2025","nextPM":"9/26/2025","physicistDue":"12/4/2025","serviceContract":"","warranty":"No","servicePerson":"Chris Light","servicePhone":"832-849-9088","expenses":"$8,883.00","repairCount":8,"repairs":[
+  {"date":"9/18/2025","cost":"$688.00","notes":"PM"}
+]},
+{"name":"GE 1.5 MRI","location":"Southwest","serial":"RR6685","model":"2226300","pmFreq":"Bi-Annual","lastPM":"3/29/2026","nextPM":"9/29/2026","physicistDue":"8/26/2026","serviceContract":"Yes","warranty":"No","servicePerson":"","servicePhone":"","expenses":"","repairCount":2,"repairs":[
+  {"date":"1/12/2025","cost":"","notes":"PM"}
+]},
+{"name":"Hitachi Open MRI","location":"Southwest","serial":"H783","model":"AIRISc","pmFreq":"Bi-Annual","lastPM":"10/22/2025","nextPM":"4/22/2026","physicistDue":"8/27/2026","serviceContract":"Yes","warranty":"No","servicePerson":"","servicePhone":"","expenses":"$2,165.00","repairCount":3,"repairs":[
+  {"date":"10/22/2025","cost":"$2,165.00","notes":"PM"}
+]},
+{"name":"Mammo","location":"Southwest","serial":"752753BU4","model":"Pristina","pmFreq":"Annual","lastPM":"10/22/2025","nextPM":"10/24/2026","physicistDue":"11/4/2026","serviceContract":"","warranty":"No","servicePerson":"Joseph Johnson","servicePhone":"800-437-1171","expenses":"$2,721.00","repairCount":1,"repairs":[
+  {"date":"11/14/2024","cost":"$2,721.00","notes":"Recalibrated gains due to artifacts"}
+]},
+{"name":"Trophon U/S Sterilizer","location":"Southwest","serial":"","model":"","pmFreq":"Annual","lastPM":"","nextPM":"","physicistDue":"","serviceContract":"","warranty":"No","servicePerson":"","servicePhone":"","expenses":"","repairCount":0,"repairs":[]},
+
+// ─── SPRING (4) ────────────────────────────────────────────
+{"name":"Hitachi Open MRI","location":"Spring","serial":"C440","model":"C4440","pmFreq":"Bi-Annual","lastPM":"9/19/2025","nextPM":"3/19/2026","physicistDue":"7/23/2026","serviceContract":"Yes","warranty":"No","servicePerson":"Paul","servicePhone":"936-276-8866","expenses":"$3,965.00","repairCount":7,"repairs":[
+  {"date":"4/4/2025","cost":"$350.00","notes":"Repair"},
+  {"date":"9/19/2025","cost":"$2,165.00","notes":"PM"}
+]},
+{"name":"Siemens 1.5 MRI","location":"Spring","serial":"J12654","model":"SYNGO MR A35","pmFreq":"Bi-Annual","lastPM":"11/11/2025","nextPM":"5/11/2026","physicistDue":"7/23/2026","serviceContract":"Yes","warranty":"No","servicePerson":"Darrell","servicePhone":"512-619-3671","expenses":"$17,949.00","repairCount":13,"repairs":[
+  {"date":"11/11/2025","cost":"$1,750.00","notes":"PM"},
+  {"date":"12/29/2025","cost":"$1,592.00","notes":"Gradient coil overtemp errors"}
+]},
+{"name":"Siemens CT","location":"Spring","serial":"11369","model":"7734853","pmFreq":"Bi-Annual","lastPM":"11/12/2025","nextPM":"5/12/2026","physicistDue":"7/31/2026","serviceContract":"","warranty":"No","servicePerson":"Darrell","servicePhone":"512-619-3671","expenses":"$6,562.00","repairCount":10,"repairs":[
+  {"date":"10/8/2025","cost":"$1,975.00","notes":"Replaced MaS"},
+  {"date":"11/11/2025","cost":"$1,337.00","notes":"PM"}
+]},
+{"name":"X-ray","location":"Spring","serial":"QG5000-16R-1101","model":"E7252X","pmFreq":"Annual","lastPM":"7/22/2025","nextPM":"7/22/2026","physicistDue":"6/18/2026","serviceContract":"","warranty":"No","servicePerson":"VXS","servicePhone":"281-242-9729","expenses":"$839.00","repairCount":3,"repairs":[
+  {"date":"7/22/2025","cost":"$839.00","notes":"PM"}
+]},
+
+// ─── RIVER OAKS (4) ────────────────────────────────────────
+{"name":"OEC c-arm #1","location":"River Oaks","serial":"ES-1738","model":"888169-01","pmFreq":"Annual","lastPM":"7/14/2025","nextPM":"7/14/2026","physicistDue":"1/30/2027","serviceContract":"No","warranty":"No","servicePerson":"","servicePhone":"","expenses":"","repairCount":0,"repairs":[]},
+{"name":"OEC c-arm #2","location":"River Oaks","serial":"ES-0571","model":"9900 Elite","pmFreq":"Annual","lastPM":"7/14/2025","nextPM":"7/14/2026","physicistDue":"1/30/2027","serviceContract":"No","warranty":"No","servicePerson":"","servicePhone":"","expenses":"","repairCount":0,"repairs":[]},
+{"name":"Hologic Mini #1","location":"River Oaks","serial":"20-1115-18","model":"Orthoscan","pmFreq":"Annual","lastPM":"10/15/2025","nextPM":"10/15/2026","physicistDue":"1/30/2027","serviceContract":"No","warranty":"No","servicePerson":"","servicePhone":"","expenses":"","repairCount":0,"repairs":[]},
+{"name":"Orthoscan Mini #2","location":"River Oaks","serial":"5N0125","model":"2013","pmFreq":"Annual","lastPM":"10/15/2025","nextPM":"7/14/2026","physicistDue":"1/30/2027","serviceContract":"No","warranty":"No","servicePerson":"","servicePhone":"","expenses":"","repairCount":0,"repairs":[]}
+];
+
+// ════════════════════════════════════════════════════════════
+const FAC  = ["Humble","Katy","Med Center","North Loop","River Oaks","Southwest","Spring","West"];
+const FLDS = [
+  ["Equipment Name *","name","text"],["Facility *","location","sel",FAC],
+  ["Serial Number","serial","text"],["Model","model","text"],
+  ["Next PM Due","nextPM","text",null,"MM/DD/YYYY"],["Physicist Due","physicistDue","text",null,"MM/DD/YYYY"],
+  ["Last PM","lastPM","text",null,"MM/DD/YYYY"],["PM Frequency","pmFreq","sel",["","Annual","Bi-Annual"]],
+  ["Service Contract","serviceContract","sel",["","Yes","No"]],["Warranty","warranty","sel",["","Yes","No"]],
+  ["Service Person","servicePerson","text"],["Service Phone","servicePhone","text"],["Expenses","expenses","text"]
+];
+
+let D, done, tab = 'all', editIdx = null;
+let mails = JSON.parse(localStorage.getItem('pm_emails') || '[]');
+
+// ── State ────────────────────────────────────────────────────
+function migrate(saved) {
+  // Backfill any blank date fields from INIT (e.g. West items added post-save)
+  const bySerial = {}, byNL = {};
+  INIT.forEach(src => {
+    if (src.serial) bySerial[src.serial] = src;
+    byNL[src.name + '|' + src.location] = src;
+  });
+  saved.forEach(item => {
+    const src = (item.serial && bySerial[item.serial]) || byNL[item.name + '|' + item.location];
+    if (!src) return;
+    if (!item.nextPM      && src.nextPM)      item.nextPM      = src.nextPM;
+    if (!item.physicistDue && src.physicistDue) item.physicistDue = src.physicistDue;
+    if (!item.lastPM      && src.lastPM)      item.lastPM      = src.lastPM;
+  });
+}
+function load() {
+  try {
+    const s = localStorage.getItem('pm_v1');
+    if (s) { const p = JSON.parse(s); D = p.d || clone(INIT); done = p.c || {}; migrate(D); }
+    else { D = clone(INIT); done = {}; }
+  } catch { D = clone(INIT); done = {}; }
+}
+function save() { localStorage.setItem('pm_v1', JSON.stringify({d:D, c:done})); }
+function clone(x) { return JSON.parse(JSON.stringify(x)); }
+load();
+
+// ── Utils ────────────────────────────────────────────────────
+function days(d) { if (!d) return null; const t = new Date(d); return isNaN(t) ? null : Math.round((t - new Date()) / 864e5); }
+function st(d)   { const n = days(d); if (n===null) return 'na'; if (n<0) return 'due'; if (n<=60) return 'warn'; return 'ok'; }
+function fmt(d)  { if (!d) return '—'; const t = new Date(d); return isNaN(t) ? d : t.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
+function sbadge(d) {
+  const s=st(d), n=days(d);
+  if (s==='na')   return '<span class="badge b-na">No date</span>';
+  if (s==='due')  return `<span class="badge b-due">Overdue ${Math.abs(n)}d</span>`;
+  if (s==='warn') return `<span class="badge b-warn">Due in ${n}d</span>`;
+  return '<span class="badge b-ok">OK</span>';
+}
+function alerts() { return D.filter(r => st(r.nextPM)==='due'||st(r.nextPM)==='warn'||st(r.physicistDue)==='due'||st(r.physicistDue)==='warn'); }
+function xe(s)   { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function isYes(v){ return v && v.toLowerCase()==='yes'; }
+function advance(ds, freq) {
+  let d = ds ? new Date(ds) : new Date();
+  if (isNaN(d)) d = new Date();
+  freq==='Bi-Annual' ? d.setMonth(d.getMonth()+6) : d.setFullYear(d.getFullYear()+1);
+  return (d.getMonth()+1)+'/'+d.getDate()+'/'+d.getFullYear();
+}
+
+let tt;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('on');
+  clearTimeout(tt); tt = setTimeout(() => el.classList.remove('on'), 2600);
+}
+
+// ── Navigation ───────────────────────────────────────────────
+function go(v) {
+  document.querySelectorAll('.view').forEach(x => x.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  closeDrawer();
+  if (v==='main')     render();
+  if (v==='alerts')   rAlerts();
+  if (v==='tasks')    rTasks();
+  if (v==='add')      buildForm('add-form', {});
+  if (v==='edit')     buildForm('edit-form', D[editIdx]);
+  if (v==='calendar') renderCal();
+  if (v==='charts')   rCharts();
+  if (v==='notify')   rEmails();
+}
+
+// ── Charts ──────────────────────────────────────────────────
+let CHARTS = {};
+let currentATab = 'overview';
+function switchAnalytics(t) {
+  currentATab = t;
+  document.querySelectorAll('.atab').forEach(b => b.classList.toggle('active', b.dataset.atab === t));
+  document.querySelectorAll('.apanel').forEach(p => p.classList.remove('active'));
+  document.getElementById('apanel-'+t).classList.add('active');
+  rCharts();
+}
+function rCharts() {
+  // palette
+  const BLUE='#0083C4', TEAL='#0E566F', GREEN='#1e6b04', AMBER='#d98500', RED='#b52a2a', GRAY='#9a9aA0', PURPLE='#38318a', LIGHT='#64656B';
+  Chart.defaults.font.family = "'Open Sans',system-ui,sans-serif";
+  Chart.defaults.font.size = 11;
+  Chart.defaults.color = '#36363C';
+
+  // destroy previous instances
+  Object.values(CHARTS).forEach(c => c && c.destroy());
+  CHARTS = {};
+
+  // aggregate data
+  const pmBuckets  = {ok:0, warn:0, due:0, na:0};
+  const phBuckets  = {ok:0, warn:0, due:0, na:0};
+  const facCount   = {};
+  const freqCount  = {};
+  const contractCt = {Yes:0, No:0};
+  const warrantyCt = {Yes:0, No:0};
+  const repairFac  = {};
+  const expenseFac = {};
+
+  D.forEach(r => {
+    pmBuckets[st(r.nextPM)]++;
+    phBuckets[st(r.physicistDue)]++;
+    facCount[r.location] = (facCount[r.location]||0) + 1;
+    const f = r.pmFreq || 'Unspecified';
+    freqCount[f] = (freqCount[f]||0) + 1;
+    contractCt[isYes(r.serviceContract) ? 'Yes' : 'No']++;
+    warrantyCt[isYes(r.warranty) ? 'Yes' : 'No']++;
+    repairFac[r.location] = (repairFac[r.location]||0) + (r.repairCount||0);
+    // parse repair cost sum
+    let sum = 0;
+    (r.repairs||[]).forEach(rp => {
+      const m = (rp.cost||'').replace(/[^\d.]/g,'');
+      if (m) sum += parseFloat(m) || 0;
+    });
+    expenseFac[r.location] = (expenseFac[r.location]||0) + sum;
+  });
+
+  // headline metrics
+  const totalRepairs = Object.values(repairFac).reduce((a,b)=>a+b,0);
+  const totalSpend   = Object.values(expenseFac).reduce((a,b)=>a+b,0);
+  const contractPct  = Math.round(contractCt.Yes / D.length * 100);
+  const warrantyPct  = Math.round(warrantyCt.Yes / D.length * 100);
+  document.getElementById('ch-metrics').innerHTML = [
+    ['Total Equipment', D.length],
+    ['Facilities',      Object.keys(facCount).length],
+    ['Total Repairs',   totalRepairs],
+    ['Recorded Spend',  '$'+totalSpend.toLocaleString(undefined,{maximumFractionDigits:0})],
+    ['Under Contract',  contractPct+'%'],
+    ['Under Warranty',  warrantyPct+'%']
+  ].map(([l,v])=>`<div class="metric"><div class="lbl">${l}</div><div class="val">${v}</div></div>`).join('');
+
+  const legendOpts = {position:'bottom', labels:{boxWidth:10, boxHeight:10, padding:10, font:{size:11}}};
+
+  // Data label formatter for pies: "count (pct%)"
+  const pieLabels = {
+    color:'#fff',
+    font:{weight:'700', size:11},
+    textStrokeColor:'rgba(0,0,0,0.35)', textStrokeWidth:3,
+    formatter:(v, ctx) => {
+      if (!v) return '';
+      const tot = ctx.chart.data.datasets[0].data.reduce((a,b)=>a+b,0);
+      const pct = tot ? Math.round(v/tot*100) : 0;
+      return v + '\n(' + pct + '%)';
+    },
+    textAlign:'center'
+  };
+  // Data label formatter for bars: just the value above
+  const barLabels = {
+    anchor:'end', align:'top', offset:2,
+    color:'#36363C',
+    font:{weight:'700', size:11},
+    formatter:v => v
+  };
+  const barLabelsMoney = Object.assign({}, barLabels, {
+    formatter:v => v >= 1000 ? '$'+(v/1000).toFixed(1)+'k' : '$'+v
+  });
+
+  // chart factories
+  const facLbls = Object.keys(facCount).sort();
+  const facPal  = [BLUE, TEAL, '#4cb3e0', '#035f8f', PURPLE, '#26a69a', AMBER, '#8b5cf6'];
+
+  const mkStatusPie = (cid, buckets) => new Chart(document.getElementById(cid), {
+    type:'pie',
+    data:{labels:['OK','Due ≤60d','Overdue','No Date'],
+      datasets:[{data:[buckets.ok, buckets.warn, buckets.due, buckets.na],
+        backgroundColor:[GREEN, AMBER, RED, GRAY], borderWidth:2, borderColor:'#fff'}]},
+    options:{responsive:true, maintainAspectRatio:false, plugins:{legend:legendOpts, datalabels:pieLabels}},
+    plugins:[ChartDataLabels]
+  });
+
+  const mkFacPie = (cid) => new Chart(document.getElementById(cid), {
+    type:'pie',
+    data:{labels:facLbls, datasets:[{data:facLbls.map(k=>facCount[k]),
+      backgroundColor:facPal.slice(0,facLbls.length), borderWidth:2, borderColor:'#fff'}]},
+    options:{responsive:true, maintainAspectRatio:false, plugins:{legend:legendOpts, datalabels:pieLabels}},
+    plugins:[ChartDataLabels]
+  });
+
+  // Render charts for the active analytics tab only
+  if (currentATab === 'overview') {
+    CHARTS.ovPm   = mkStatusPie('ov-pm',   pmBuckets);
+    CHARTS.ovPhys = mkStatusPie('ov-phys', phBuckets);
+    CHARTS.ovFac  = mkFacPie('ov-fac');
+  }
+
+  if (currentATab === 'pm') {
+    CHARTS.pm   = mkStatusPie('ch-pm',   pmBuckets);
+    CHARTS.phys = mkStatusPie('ch-phys', phBuckets);
+    const freqLbls = Object.keys(freqCount);
+    CHARTS.freq = new Chart(document.getElementById('ch-freq'), {
+      type:'pie',
+      data:{labels:freqLbls, datasets:[{data:freqLbls.map(k=>freqCount[k]),
+        backgroundColor:[BLUE, TEAL, GRAY, PURPLE], borderWidth:2, borderColor:'#fff'}]},
+      options:{responsive:true, maintainAspectRatio:false, plugins:{legend:legendOpts, datalabels:pieLabels}},
+      plugins:[ChartDataLabels]
+    });
+  }
+
+  if (currentATab === 'facility') {
+    CHARTS.fac = mkFacPie('ch-fac');
+    // Build facility breakdown table
+    const tbl = document.getElementById('fac-table');
+    const rows = facLbls.map(f => {
+      const items = D.filter(r => r.location === f);
+      const ok   = items.filter(r => st(r.nextPM)==='ok').length;
+      const warn = items.filter(r => st(r.nextPM)==='warn').length;
+      const due  = items.filter(r => st(r.nextPM)==='due').length;
+      const na   = items.filter(r => st(r.nextPM)==='na').length;
+      const rep  = items.reduce((a,r)=>a+(r.repairCount||0),0);
+      return `<tr>
+        <td style="font-weight:600">${xe(f)}</td>
+        <td class="num">${items.length}</td>
+        <td class="num" style="color:var(--green-text)">${ok}</td>
+        <td class="num" style="color:var(--amber-text)">${warn}</td>
+        <td class="num" style="color:var(--red-text)">${due}</td>
+        <td class="num" style="color:var(--text3)">${na}</td>
+        <td class="num">${rep}</td>
+      </tr>`;
+    }).join('');
+    tbl.innerHTML = `<table class="fac-tbl">
+      <thead><tr><th>Facility</th><th style="text-align:right">Items</th><th style="text-align:right">OK</th><th style="text-align:right">Due Soon</th><th style="text-align:right">Overdue</th><th style="text-align:right">No Date</th><th style="text-align:right">Repairs</th></tr></thead>
+      <tbody>${rows}</tbody></table>`;
+  }
+
+  if (currentATab === 'coverage') {
+    CHARTS.contract = new Chart(document.getElementById('ch-contract'), {
+      type:'pie',
+      data:{labels:['Under Contract','No Contract'],
+        datasets:[{data:[contractCt.Yes, contractCt.No], backgroundColor:[BLUE, '#cfd4d8'], borderWidth:2, borderColor:'#fff'}]},
+      options:{responsive:true, maintainAspectRatio:false, plugins:{legend:legendOpts, datalabels:pieLabels}},
+      plugins:[ChartDataLabels]
+    });
+    CHARTS.warranty = new Chart(document.getElementById('ch-warranty'), {
+      type:'pie',
+      data:{labels:['Under Warranty','No Warranty'],
+        datasets:[{data:[warrantyCt.Yes, warrantyCt.No], backgroundColor:[TEAL, '#cfd4d8'], borderWidth:2, borderColor:'#fff'}]},
+      options:{responsive:true, maintainAspectRatio:false, plugins:{legend:legendOpts, datalabels:pieLabels}},
+      plugins:[ChartDataLabels]
+    });
+  }
+
+  if (currentATab === 'repairs') {
+    const repLbls = Object.keys(repairFac).sort();
+    CHARTS.repairs = new Chart(document.getElementById('ch-repairs'), {
+      type:'bar',
+      data:{labels:repLbls, datasets:[{label:'Repairs', data:repLbls.map(k=>repairFac[k]),
+        backgroundColor:BLUE, borderRadius:6}]},
+      options:{responsive:true, maintainAspectRatio:false, layout:{padding:{top:20}},
+        plugins:{legend:{display:false}, datalabels:barLabels},
+        scales:{y:{beginAtZero:true, grid:{color:'rgba(0,0,0,0.06)'}, ticks:{precision:0}}, x:{grid:{display:false}}}},
+      plugins:[ChartDataLabels]
+    });
+    const expLbls = Object.keys(expenseFac).sort();
+    CHARTS.expenses = new Chart(document.getElementById('ch-expenses'), {
+      type:'bar',
+      data:{labels:expLbls, datasets:[{label:'Expenses', data:expLbls.map(k=>Math.round(expenseFac[k])),
+        backgroundColor:TEAL, borderRadius:6}]},
+      options:{responsive:true, maintainAspectRatio:false, layout:{padding:{top:20}},
+        plugins:{legend:{display:false}, datalabels:barLabelsMoney,
+          tooltip:{callbacks:{label:c=>'$'+c.parsed.y.toLocaleString()}}},
+        scales:{y:{beginAtZero:true, grid:{color:'rgba(0,0,0,0.06)'},
+          ticks:{callback:v=>'$'+(v>=1000?(v/1000)+'k':v)}}, x:{grid:{display:false}}}},
+      plugins:[ChartDataLabels]
+    });
+  }
+}
+
+// ── Checkboxes (staged — apply on Submit) ───────────────────
+let pending = {};
+function togPM(i) {
+  const k = 'pm-'+i;
+  if (pending[k]) delete pending[k]; else pending[k] = true;
+  refreshSubmitBtn();
+}
+function togPh(i) {
+  const k = 'ph-'+i;
+  if (pending[k]) delete pending[k]; else pending[k] = true;
+  refreshSubmitBtn();
+}
+function pendingCount() { return Object.keys(pending).length; }
+function refreshSubmitBtn() {
+  const n = pendingCount();
+  const btn = document.getElementById('submitBtn');
+  if (!btn) return;
+  btn.style.display = n ? 'inline-flex' : 'none';
+  btn.textContent = '✓ Submit ('+n+')';
+  // also refresh any visible views that show checkboxes
+  if (document.getElementById('view-main').classList.contains('active')) render();
+  if (document.getElementById('view-alerts').classList.contains('active')) rAlerts();
+}
+function submitPending() {
+  const n = pendingCount();
+  if (!n) { toast('Nothing to submit'); return; }
+  let pm=0, ph=0;
+  Object.keys(pending).forEach(k => {
+    const [kind, idxStr] = k.split('-');
+    const i = +idxStr, r = D[i];
+    if (!r) return;
+    if (kind === 'pm') {
+      const td = new Date().toLocaleDateString('en-US');
+      done[k] = {date: new Date().toISOString(), lp: r.lastPM, np: r.nextPM};
+      r.lastPM = td; r.nextPM = advance(td, r.pmFreq);
+      pm++;
+    } else if (kind === 'ph') {
+      done[k] = {date: new Date().toISOString(), pd: r.physicistDue};
+      r.physicistDue = advance(r.physicistDue, r.pmFreq);
+      ph++;
+    }
+  });
+  pending = {};
+  save();
+  render();
+  refreshSubmitBtn();
+  toast('Submitted — '+pm+' PM, '+ph+' Physicist updated');
+}
+
+// ── Render Table ─────────────────────────────────────────────
+function render() {
+  const sf = document.getElementById('fSt').value,
+        tf = document.getElementById('fTy').value,
+        q  = document.getElementById('fQ').value.toLowerCase();
+
+  let rows = D.filter(r => {
+    if (tab !== 'all' && r.location !== tab) return false;
+    if (q && !r.name.toLowerCase().includes(q) && !r.location.toLowerCase().includes(q) &&
+        !(r.serial||'').toLowerCase().includes(q) && !(r.model||'').toLowerCase().includes(q)) return false;
+    if (sf) {
+      const ps = st(r.nextPM), qs = st(r.physicistDue);
+      if (tf==='pm'   && ps!==sf) return false;
+      if (tf==='phys' && qs!==sf) return false;
+      if (!tf && ps!==sf && qs!==sf) return false;
+    }
+    return true;
+  });
+
+  const tot  = rows.length,
+        over = rows.filter(r => st(r.nextPM)==='due'  || st(r.physicistDue)==='due').length,
+        soon = rows.filter(r => (st(r.nextPM)==='warn'||st(r.physicistDue)==='warn') && st(r.nextPM)!=='due' && st(r.physicistDue)!=='due').length,
+        ok   = rows.filter(r => st(r.nextPM)==='ok' && (st(r.physicistDue)==='ok'||st(r.physicistDue)==='na')).length,
+        con  = rows.filter(r => isYes(r.serviceContract)).length,
+        war  = rows.filter(r => isYes(r.warranty)).length,
+        rep  = rows.reduce((s,r) => s+(r.repairCount||0), 0);
+
+  document.getElementById('metrics').innerHTML = `
+    <div class="metric"><div class="lbl">Items</div><div class="val">${tot}</div></div>
+    <div class="metric"><div class="lbl">OK</div><div class="val" style="color:var(--green-text)">${ok}</div></div>
+    <div class="metric"><div class="lbl">Due Soon</div><div class="val" style="color:var(--amber-text)">${soon}</div></div>
+    <div class="metric"><div class="lbl">Overdue</div><div class="val" style="color:var(--red-text)">${over}</div></div>
+    <div class="metric"><div class="lbl">Contracted</div><div class="val" style="color:var(--blue-text)">${con}</div></div>
+    <div class="metric"><div class="lbl">Warranty</div><div class="val" style="color:var(--purple-text)">${war}</div></div>
+    <div class="metric"><div class="lbl">Total Repairs</div><div class="val">${rep}</div></div>`;
+
+  document.getElementById('hdr-sub').textContent =
+    FAC.length+' facilities · '+D.length+' items · '+Object.keys(done).length+' tasks done';
+  document.getElementById('abadge').textContent = alerts().length;
+  document.getElementById('tbadge').textContent = Object.keys(done).length;
+
+  document.getElementById('tbody').innerHTML = rows.map(r => {
+    const i = D.indexOf(r), pd = !!pending['pm-'+i], ph = !!pending['ph-'+i];
+    return `<tr class="row">
+      <td><div class="cb${pd?' on':''}" onclick="event.stopPropagation();togPM(${i})" title="${pd?'Undo PM':'Mark PM complete — advances next date'}"></div></td>
+      <td><div class="cb${ph?' on':''}" onclick="event.stopPropagation();togPh(${i})" title="${ph?'Undo Physicist':'Mark Physicist complete — advances next date'}"></div></td>
+      <td style="font-weight:600;cursor:pointer" onclick="openDrawer(${i})">${xe(r.name)}</td>
+      <td onclick="openDrawer(${i})"><span class="badge b-blue">${xe(r.location)}</span></td>
+      <td onclick="openDrawer(${i})" style="font-size:11px;color:var(--text2)">${xe(r.serial)||'—'}</td>
+      <td onclick="openDrawer(${i})" style="font-size:11px;color:var(--text2);max-width:150px;overflow:hidden;text-overflow:ellipsis" title="${xe(r.model)}">${xe(r.model)||'—'}</td>
+      <td onclick="openDrawer(${i})">${xe(r.pmFreq)||'—'}</td>
+      <td onclick="openDrawer(${i})">${fmt(r.lastPM)}${pd?'<div class="ci">✓ Today</div>':''}</td>
+      <td onclick="openDrawer(${i})">${fmt(r.nextPM)}${pd?'<div class="ci">✓ Advanced</div>':''}</td>
+      <td onclick="openDrawer(${i})">${pd?'<span class="badge b-done">Done</span>':sbadge(r.nextPM)}</td>
+      <td onclick="openDrawer(${i})">${fmt(r.physicistDue)}${ph?'<div class="ci">✓ Advanced</div>':''}</td>
+      <td onclick="openDrawer(${i})">${ph?'<span class="badge b-done">Done</span>':sbadge(r.physicistDue)}</td>
+      <td onclick="openDrawer(${i})" style="font-size:11px">${xe(r.servicePerson)||'—'}${r.servicePhone?'<br><span style="color:var(--text3)">'+xe(r.servicePhone)+'</span>':''}</td>
+      <td onclick="openDrawer(${i})">${isYes(r.serviceContract)?'<span class="badge b-blue">Yes</span>':'—'}</td>
+      <td onclick="openDrawer(${i})">${isYes(r.warranty)?'<span class="badge b-purple">Yes</span>':'—'}</td>
+      <td onclick="openDrawer(${i})">${r.repairCount>0?'<span class="badge b-na">'+r.repairCount+'</span>':'—'}</td>
+      <td onclick="openDrawer(${i})" style="font-size:11px;color:var(--text2);max-width:130px;overflow:hidden;text-overflow:ellipsis" title="${xe(r.expenses)}">${xe(r.expenses)||'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function buildTabs() {
+  document.getElementById('tabs').innerHTML = ['all',...FAC].map(t =>
+    `<button class="tab${tab===t?' active':''}" onclick="tab='${t}';buildTabs();render()">${t==='all'?'All':t}</button>`
+  ).join('');
+}
+buildTabs();
+
+// ── Drawer ───────────────────────────────────────────────────
+function openDrawer(i) {
+  const r = D[i];
+  document.querySelectorAll('.view').forEach(x => x.classList.remove('active'));
+  document.getElementById('view-main').classList.add('active');
+  document.getElementById('d-fac').textContent  = r.location;
+  document.getElementById('d-name').textContent = r.name;
+  const pd = !!done['pm-'+i], ph = !!done['ph-'+i];
+  const fl = r.pmFreq==='Bi-Annual' ? '6 months' : '1 year';
+
+  document.getElementById('d-acts').innerHTML =
+    `<button class="btn-p" onclick="editIdx=${i};go('edit')">✎ Edit</button>` +
+    (r.servicePerson ? `<button class="btn-g" onclick="draftMail('${xe(r.name)}','${xe(r.location)}','${xe(r.servicePerson)}','${r.nextPM}')">✉ Draft Email</button>` : '') +
+    `<button class="btn-d" onclick="del(${i})">Delete</button>`;
+
+  document.getElementById('d-tasks').innerHTML = `
+    <div class="stitle" style="margin-top:0">Maintenance Tasks</div>
+    <div class="trow" onclick="togPM(${i});openDrawer(${i})">
+      <div class="cb${pd?' on':''}"></div>
+      <div class="trow-label${pd?' done':''}">
+        <div style="font-weight:600">Preventive Maintenance</div>
+        <div style="font-size:11px;color:var(--text2)">${pd
+          ? '<span style="color:var(--ok)">✓ Done '+new Date(done['pm-'+i].date).toLocaleDateString()+'</span><br>Last PM → '+fmt(r.lastPM)+' · Next PM → '+fmt(r.nextPM)
+          : 'Due: '+fmt(r.nextPM)+' · Checking sets Last PM = today, Next PM = today + '+fl}</div>
+      </div>
+    </div>
+    <div class="trow" onclick="togPh(${i});openDrawer(${i})">
+      <div class="cb${ph?' on':''}"></div>
+      <div class="trow-label${ph?' done':''}">
+        <div style="font-weight:600">Physicist Evaluation</div>
+        <div style="font-size:11px;color:var(--text2)">${ph
+          ? '<span style="color:var(--ok)">✓ Done '+new Date(done['ph-'+i].date).toLocaleDateString()+'</span><br>Next Due → '+fmt(r.physicistDue)
+          : 'Due: '+fmt(r.physicistDue)+' · Checking advances due date by '+fl}</div>
+      </div>
+    </div>`;
+
+  const fi = [
+    ['Serial', r.serial], ['Model', r.model], ['PM Frequency', r.pmFreq],
+    ['Last PM', fmt(r.lastPM)],
+    ['Next PM', r.nextPM ? fmt(r.nextPM)+' '+sbadge(r.nextPM) : '—'],
+    ['Physicist Due', r.physicistDue ? fmt(r.physicistDue)+' '+sbadge(r.physicistDue) : '—'],
+    ['Service Contract', r.serviceContract||'—'], ['Warranty', r.warranty||'—'],
+    ['Service Person', r.servicePerson||'—'], ['Service Phone', r.servicePhone||'—'],
+    ['Expenses', r.expenses||'—']
+  ];
+  let repH = r.repairs.length
+    ? r.repairs.slice().reverse().slice(0,10).map(x =>
+        `<div class="rep"><div class="rd">${x.date?fmt(x.date):'No date'}${x.cost?' · '+x.cost:''}</div><div class="rn">${xe(x.notes)||'—'}</div></div>`
+      ).join('') + (r.repairCount>10 ? `<p style="font-size:11px;color:var(--text2)">Showing 10 of ${r.repairCount}.</p>` : '')
+    : '<p style="font-size:12px;color:var(--text2)">No repair records.</p>';
+
+  document.getElementById('d-body').innerHTML =
+    `<div class="dl">${fi.map(([k,v])=>`<span class="k">${k}</span><span>${v||'—'}</span>`).join('')}</div>` +
+    `<div class="stitle">Repair History (${r.repairCount})</div>${repH}`;
+  document.getElementById('overlay').classList.add('on');
+}
+function closeDrawer() { document.getElementById('overlay').classList.remove('on'); }
+
+// ── Alerts ───────────────────────────────────────────────────
+function rAlerts() {
+  const al = alerts(), p = document.getElementById('panel-alerts');
+  if (!al.length) { p.innerHTML = '<p style="color:var(--text2)">All equipment is current — no alerts.</p>'; return; }
+  p.innerHTML = `<div style="font-weight:600;margin-bottom:12px">${al.length} item${al.length>1?'s':''} need attention</div>` +
+    al.map(r => {
+      const i = D.indexOf(r), pd = !!pending['pm-'+i], ph = !!pending['ph-'+i];
+      return `<div class="arow">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="display:flex;gap:4px">
+            <div class="cb${pd?' on':''}" onclick="event.stopPropagation();togPM(${i});rAlerts()" title="PM"></div>
+            <div class="cb${ph?' on':''}" onclick="event.stopPropagation();togPh(${i});rAlerts()" title="Physicist"></div>
+          </div>
+          <div>
+            <div style="font-weight:600">${xe(r.name)} <span style="font-weight:400;color:var(--text2)">— ${xe(r.location)}</span></div>
+            <div style="font-size:11px;color:var(--text2);margin-top:2px">
+              ${st(r.nextPM)!=='ok'&&st(r.nextPM)!=='na' ? 'PM: '+fmt(r.nextPM)+' '+sbadge(r.nextPM)+' ' : ''}
+              ${st(r.physicistDue)!=='ok'&&st(r.physicistDue)!=='na' ? 'Phys: '+fmt(r.physicistDue)+' '+sbadge(r.physicistDue) : ''}
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px">
+          ${r.servicePerson ? `<button class="btn-g" onclick="draftMail('${xe(r.name)}','${xe(r.location)}','${xe(r.servicePerson)}','${r.nextPM}')">Email</button>` : ''}
+          <button class="btn" onclick="openDrawer(${i})">Details</button>
+        </div>
+      </div>`;
+    }).join('');
+}
+
+// ── Tasks ────────────────────────────────────────────────────
+function rTasks() {
+  const items = Object.entries(done).map(([key, val]) => {
+    const [type, idxS] = key.split('-');
+    const i = parseInt(idxS), r = D[i];
+    if (!r) return null;
+    return { key, type: type==='pm'?'PM':'Physicist', name:r.name, loc:r.location, date:val.date, i,
+      detail: type==='pm' ? 'Last PM → '+fmt(r.lastPM)+' · Next PM → '+fmt(r.nextPM) : 'Next Due → '+fmt(r.physicistDue) };
+  }).filter(Boolean).sort((a,b) => new Date(b.date)-new Date(a.date));
+
+  document.getElementById('tasks-ct').textContent = items.length ? items.length+' completed' : '';
+  const p = document.getElementById('panel-tasks');
+  if (!items.length) { p.innerHTML = '<p style="color:var(--text2)">No completed tasks yet.</p>'; return; }
+  p.innerHTML = items.map(it => {
+    const fn = it.type==='PM' ? 'togPM' : 'togPh';
+    return `<div class="arow">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="cb on" onclick="event.stopPropagation();${fn}(${it.i});rTasks()"></div>
+        <div>
+          <div style="font-weight:600">${it.type}: ${xe(it.name)} <span style="color:var(--text2);font-weight:400">— ${xe(it.loc)}</span></div>
+          <div style="font-size:11px;color:var(--text2)">Done ${new Date(it.date).toLocaleDateString()} · ${it.detail}</div>
+        </div>
+      </div>
+      <button class="btn" onclick="openDrawer(${it.i})">View</button>
+    </div>`;
+  }).join('');
+}
+
+// ── Forms ────────────────────────────────────────────────────
+function buildForm(cid, data) {
+  document.getElementById(cid).innerHTML = FLDS.map(([lbl,key,type,opts,ph]) => {
+    const v = data[key] || '';
+    if (type==='sel') return `<div class="fg"><label>${lbl}</label><select id="${cid}-${key}">${(opts||[]).map(o=>`<option value="${o}"${v===o?' selected':''}>${o||'Select…'}</option>`).join('')}</select></div>`;
+    return `<div class="fg"><label>${lbl}</label><input type="text" id="${cid}-${key}" value="${xe(v)}" placeholder="${ph||''}"></div>`;
+  }).join('');
+  if (cid==='edit-form') document.getElementById('edit-h').textContent = 'Edit: '+(data.name||'Equipment');
+}
+function getForm(cid) {
+  const d = {};
+  FLDS.forEach(([_,k]) => { const el=document.getElementById(cid+'-'+k); if(el) d[k]=el.value; });
+  return d;
+}
+function doAdd() {
+  const d = getForm('add-form');
+  if (!d.name||!d.location) { toast('Name and facility required'); return; }
+  D.push({...d, repairCount:0, repairs:[]});
+  save(); toast('Equipment added!'); go('main');
+}
+function doEdit() {
+  const d = getForm('edit-form');
+  D[editIdx] = {...D[editIdx], ...d};
+  save(); toast('Equipment updated!'); openDrawer(editIdx); render();
+}
+function del(i) {
+  if (!confirm('Delete '+D[i].name+'?')) return;
+  D.splice(i,1);
+  const nc = {};
+  Object.entries(done).forEach(([k,v]) => {
+    const [t,s] = k.split('-'), ii = parseInt(s);
+    if (ii<i) nc[k]=v; else if (ii>i) nc[t+'-'+(ii-1)]=v;
+  });
+  done = nc; save(); closeDrawer(); toast('Deleted'); render();
+}
+function doExport() {
+  const cols=['name','location','serial','model','pmFreq','lastPM','nextPM','physicistDue','serviceContract','warranty','servicePerson','servicePhone','expenses','repairCount'];
+  const csv=[cols.join(','),...D.map(r=>cols.map(c=>`"${(r[c]||'').toString().replace(/"/g,'""')}"`).join(','))].join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download='equipment_maintenance_export_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click(); toast('CSV downloaded!');
+}
+function doReset() {
+  if (!confirm('Reset all data and completed tasks to original?')) return;
+  localStorage.removeItem('pm_v1');
+  D = clone(INIT); done = {};
+  toast('Data reset'); render();
+}
+
+// ── Email / Notifications ────────────────────────────────────
+function addEmail() {
+  const inp = document.getElementById('einput'), v = inp.value.trim();
+  if (!v||!v.includes('@')) { toast('Enter a valid email'); return; }
+  if (mails.includes(v)) { toast('Already added'); return; }
+  mails.push(v); localStorage.setItem('pm_emails', JSON.stringify(mails));
+  inp.value = ''; rEmails(); toast('Email added');
+}
+function remEmail(i) { mails.splice(i,1); localStorage.setItem('pm_emails', JSON.stringify(mails)); rEmails(); }
+function rEmails() {
+  const el = document.getElementById('etags');
+  if (!el) return;
+  el.innerHTML = mails.length
+    ? mails.map((e,i) => `<span class="etag">${e}<button onclick="remEmail(${i})">×</button></span>`).join('')
+    : '<span style="font-size:12px;color:var(--text2)">No recipients yet.</span>';
+}
+function prevEmail() {
+  const al = alerts();
+  if (!al.length) { toast('No alerts to preview'); return; }
+  const lines = al.map(r => '• '+r.name+' ('+r.location+') — PM: '+(fmt(r.nextPM)||'—')+' | Physicist: '+(fmt(r.physicistDue)||'—')).join('\n');
+  const body = 'Subject: Equipment Maintenance Alert — '+al.length+' item'+(al.length>1?'s':'')+' require attention\n\n'+
+    'Hello,\n\nThe following items are overdue or due within 60 days:\n\n'+lines+
+    '\n\nPlease review and schedule service.\n\nAutomated alert.';
+  document.getElementById('modal-body').innerHTML =
+    `<pre style="white-space:pre-wrap;font-family:inherit;font-size:12px;background:var(--bg2);padding:12px;border-radius:var(--r);line-height:1.7">${body}</pre>`;
+  document.getElementById('modal-bg').classList.add('on');
+}
+function cpyEmail() {
+  const pre = document.querySelector('#modal-body pre');
+  if (pre) { navigator.clipboard.writeText(pre.textContent); toast('Copied!'); }
+}
+function cpyTpl() {
+  navigator.clipboard.writeText('Subject: Equipment Maintenance Alert\n\nThe following items need attention:\n\n• [Equipment] ([Facility]) — PM: [Date]\n\nPlease schedule service.');
+  toast('Template copied!');
+}
+function draftMail(name, loc, person, due) {
+  const subj = 'Service Request: '+name+' at '+loc;
+  const body = 'Hello '+person+',\n\nScheduling PM for '+name+' at '+loc+'.\nNext PM due: '+fmt(due)+'\n\nPlease advise on availability.\n\nThank you.';
+  window.open('mailto:?subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(body));
+}
+function closeModal() { document.getElementById('modal-bg').classList.remove('on'); }
+
+// ── Calendar ─────────────────────────────────────────────────
+let cY = new Date().getFullYear(), cM = new Date().getMonth();
+const DOWS  = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MONS  = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function calMv(d)  { cM+=d; if(cM<0){cM=11;cY--} if(cM>11){cM=0;cY++} renderCal(); }
+function calToday(){ cY=new Date().getFullYear(); cM=new Date().getMonth(); renderCal(); }
+
+function calEvts() {
+  const fac = (document.getElementById('cal-fac')||{value:''}).value;
+  const ev = [];
+  D.forEach(r => {
+    if (fac && r.location!==fac) return;
+    if (r.nextPM) { const d=new Date(r.nextPM); if(!isNaN(d)){ const dl=Math.round((d-new Date())/864e5); ev.push({date:d,label:r.name,sub:r.location,type:'PM',cls:dl<0?'edu':dl<=60?'ewn':'epm'}); }}
+    if (r.physicistDue) { const d=new Date(r.physicistDue); if(!isNaN(d)){ const dl=Math.round((d-new Date())/864e5); ev.push({date:d,label:r.name,sub:r.location,type:'Physicist',cls:dl<0?'edu':dl<=60?'ewn':'eph'}); }}
+  });
+  return ev;
+}
+
+function renderCal() {
+  document.getElementById('cal-lbl').textContent = MONS[cM]+' '+cY;
+  const grid=document.getElementById('cal-grid'), ev=calEvts();
+  let html = DOWS.map(d=>`<div class="cal-dow">${d}</div>`).join('');
+  const fd=new Date(cY,cM,1).getDay(), dim=new Date(cY,cM+1,0).getDate(), dip=new Date(cY,cM,0).getDate();
+  const now=new Date(); now.setHours(0,0,0,0);
+  const em={};
+  ev.forEach(e=>{ const k=e.date.getFullYear()+'-'+e.date.getMonth()+'-'+e.date.getDate(); if(!em[k])em[k]=[]; em[k].push(e); });
+
+  for(let i=0;i<fd;i++) html+=`<div class="cal-day om"><div class="cal-dn">${dip-fd+1+i}</div></div>`;
+  for(let d=1;d<=dim;d++){
+    const dt=new Date(cY,cM,d); dt.setHours(0,0,0,0);
+    const isT=dt.getTime()===now.getTime(), k=cY+'-'+cM+'-'+d, de=em[k]||[];
+    let evH=de.slice(0,3).map(e=>`<div class="cev ${e.cls}" title="${e.label} (${e.sub}) — ${e.type}" onclick="showPop(event,'${k}')">${e.type==='Physicist'?'🔬 ':'🔧 '}${e.label}</div>`).join('');
+    if(de.length>3) evH+=`<div class="cal-more" onclick="showPop(event,'${k}')">+${de.length-3} more</div>`;
+    html+=`<div class="cal-day${isT?' td':''}"><div class="cal-dn">${d}</div>${evH}</div>`;
+  }
+  const rem=(fd+dim)%7===0?0:7-(fd+dim)%7;
+  for(let i=1;i<=rem;i++) html+=`<div class="cal-day om"><div class="cal-dn">${i}</div></div>`;
+  grid.innerHTML=html;
+
+  const el=document.getElementById('cal-up'),s=new Date(cY,cM,1),e=new Date(cY,cM+1,0);
+  const inM=ev.filter(x=>x.date>=s&&x.date<=e).sort((a,b)=>a.date-b.date);
+  if(!inM.length){el.innerHTML='<p style="font-size:12px;color:var(--text2)">No events this month.</p>';return}
+  el.innerHTML=inM.map(x=>{
+    const dl=Math.round((x.date-new Date())/864e5);
+    const bc=dl<0?'b-due':dl<=60?'b-warn':'b-ok';
+    const bt=dl<0?'Overdue '+Math.abs(dl)+'d':dl===0?'Today':'In '+dl+'d';
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);gap:8px;flex-wrap:wrap">
+      <div><span style="font-size:12px;font-weight:600">${x.label}</span><span style="font-size:11px;color:var(--text2);margin-left:6px">${x.sub} · ${x.type}</span></div>
+      <div style="display:flex;align-items:center;gap:8px"><span style="font-size:12px;color:var(--text2)">${x.date.toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span><span class="badge ${bc}">${bt}</span></div>
+    </div>`;
+  }).join('');
+}
+
+function showPop(e, key) {
+  e.stopPropagation();
+  const ev=calEvts(), [y,m,d]=key.split('-').map(Number);
+  const de=ev.filter(x=>x.date.getFullYear()===y&&x.date.getMonth()===m&&x.date.getDate()===d);
+  if(!de.length) return;
+  const pop=document.getElementById('cpop');
+  document.getElementById('cpop-title').textContent=new Date(y,m,d).toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  document.getElementById('cpop-body').innerHTML=de.map(x=>{
+    const c=x.cls==='epm'?'var(--blue-text)':x.cls==='eph'?'var(--purple-text)':x.cls==='edu'?'var(--red-text)':'var(--amber-text)';
+    return `<div class="cpop-item"><div class="cpop-dot" style="background:${c}"></div><div><div style="font-weight:600">${x.label}</div><div style="color:var(--text2)">${x.sub} · ${x.type}</div></div></div>`;
+  }).join('');
+  pop.style.left=Math.min(e.clientX+10,innerWidth-278)+'px';
+  pop.style.top=Math.min(e.clientY+10,innerHeight-200)+'px';
+  pop.classList.add('on');
+}
+function closePop(){ document.getElementById('cpop').classList.remove('on'); }
+document.addEventListener('click', e => {
+  const p=document.getElementById('cpop');
+  if(p&&p.classList.contains('on')&&!p.contains(e.target)) closePop();
+});
+
+// ── Init ─────────────────────────────────────────────────────
+render();
+</script>
+</body>
+</html>
