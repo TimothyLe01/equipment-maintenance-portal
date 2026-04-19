@@ -14,6 +14,12 @@
 <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}))}</script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+  // ── Supabase config (publishable anon key — safe to expose) ──
+  window.SUPABASE_URL = '__SUPABASE_URL__';
+  window.SUPABASE_KEY = '__SUPABASE_ANON_KEY__';
+</script>
 <style>
 :root{
   --bg:#ffffff;--bg2:#f4f6f8;--bg3:#e8ecef;
@@ -213,6 +219,7 @@ tr.row:hover td{background:var(--bg2);cursor:pointer}
   <div>
     <h1>Equipment Maintenance Portal</h1>
     <div class="sub" id="hdr-sub">Loading…</div>
+    <div id="cloud-dot" style="font-size:10px;margin-top:2px;color:#9a9aA0;font-weight:600;letter-spacing:.04em">● Local only</div>
   </div>
   <div style="display:flex;gap:6px;flex-wrap:wrap">
     <button class="btn" onclick="go('tasks')">✓ Tasks <span id="tbadge" class="cbadge" style="background:var(--green-bg);color:var(--green-text)">0</span></button>
@@ -690,7 +697,88 @@ function load() {
     else { D = clone(INIT); done = {}; }
   } catch { D = clone(INIT); done = {}; }
 }
-function save() { localStorage.setItem('pm_v1', JSON.stringify({d:D, c:done})); }
+function save() {
+  localStorage.setItem('pm_v1', JSON.stringify({d:D, c:done}));
+  cloudPush();
+}
+
+// ── Cloud sync (Supabase) ───────────────────────────────────
+let sb = null, sbReady = false, sbPushTimer = null;
+function cloudInit() {
+  if (!window.SUPABASE_URL || window.SUPABASE_URL.indexOf('__') === 0) return;
+  if (!window.supabase) return;
+  try {
+    sb = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_KEY, {
+      realtime: { params: { eventsPerSecond: 5 } }
+    });
+    sbReady = true;
+    cloudPull();
+    sb.channel('portal_state_changes')
+      .on('postgres_changes',
+          { event:'*', schema:'public', table:'portal_state', filter:'id=eq.1' },
+          payload => cloudApply(payload.new && payload.new.data))
+      .subscribe();
+  } catch(e) { console.warn('Supabase init failed:', e); sb = null; sbReady = false; }
+}
+async function cloudPull() {
+  if (!sbReady) return;
+  try {
+    const { data, error } = await sb.from('portal_state').select('data').eq('id', 1).single();
+    if (error) { console.warn('cloudPull:', error.message); return; }
+    if (data && data.data) cloudApply(data.data);
+  } catch(e) { console.warn('cloudPull failed:', e); }
+}
+function cloudApply(payload) {
+  if (!payload || typeof payload !== 'object') return;
+  // Only overwrite if the payload actually has data (avoids wiping on first empty row)
+  if (payload.d && Array.isArray(payload.d) && payload.d.length) {
+    D = payload.d; done = payload.c || {}; migrate(D);
+  }
+  if (Array.isArray(payload.emails)) {
+    mails = payload.emails;
+    localStorage.setItem('pm_emails', JSON.stringify(mails));
+  }
+  localStorage.setItem('pm_v1', JSON.stringify({d:D, c:done}));
+  // Re-render whichever view is active so remote changes appear live
+  const active = document.querySelector('.view.active');
+  if (active) {
+    const v = active.id.replace('view-','');
+    if (v==='main')     render();
+    else if (v==='alerts')   rAlerts();
+    else if (v==='tasks')    rTasks();
+    else if (v==='calendar') renderCal();
+    else if (v==='charts')   rCharts();
+    else if (v==='notify')   rEmails();
+  }
+  setCloudStatus('synced');
+}
+function cloudPush() {
+  if (!sbReady) { setCloudStatus('local'); return; }
+  // Debounce rapid successive saves (e.g. during Submit batch)
+  clearTimeout(sbPushTimer);
+  setCloudStatus('saving');
+  sbPushTimer = setTimeout(async () => {
+    try {
+      const payload = { id:1, data:{ d:D, c:done, emails:mails } };
+      const { error } = await sb.from('portal_state').upsert(payload, { onConflict:'id' });
+      if (error) { console.warn('cloudPush:', error.message); setCloudStatus('error'); }
+      else setCloudStatus('synced');
+    } catch(e) { console.warn('cloudPush failed:', e); setCloudStatus('error'); }
+  }, 350);
+}
+function setCloudStatus(s) {
+  const el = document.getElementById('cloud-dot');
+  if (!el) return;
+  const map = {
+    synced: { color:'#1e6b04', text:'● Synced' },
+    saving: { color:'#d98500', text:'● Saving…' },
+    error:  { color:'#b52a2a', text:'● Offline' },
+    local:  { color:'#9a9aA0', text:'● Local only' }
+  };
+  const m = map[s] || map.local;
+  el.style.color = m.color;
+  el.textContent = m.text;
+}
 function clone(x) { return JSON.parse(JSON.stringify(x)); }
 load();
 
@@ -1227,10 +1315,10 @@ function addEmail() {
   const inp = document.getElementById('einput'), v = inp.value.trim();
   if (!v||!v.includes('@')) { toast('Enter a valid email'); return; }
   if (mails.includes(v)) { toast('Already added'); return; }
-  mails.push(v); localStorage.setItem('pm_emails', JSON.stringify(mails));
+  mails.push(v); localStorage.setItem('pm_emails', JSON.stringify(mails)); cloudPush();
   inp.value = ''; rEmails(); toast('Email added');
 }
-function remEmail(i) { mails.splice(i,1); localStorage.setItem('pm_emails', JSON.stringify(mails)); rEmails(); }
+function remEmail(i) { mails.splice(i,1); localStorage.setItem('pm_emails', JSON.stringify(mails)); cloudPush(); rEmails(); }
 function rEmails() {
   const el = document.getElementById('etags');
   if (!el) return;
@@ -1341,6 +1429,7 @@ document.addEventListener('click', e => {
 
 // ── Init ─────────────────────────────────────────────────────
 render();
+cloudInit();
 </script>
 </body>
 </html>
